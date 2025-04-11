@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificador de Idade para Votação e Alistamento</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-size: cover;
+            
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-image 0.5s ease;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+        
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3367d6;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            display: none;
+        }
+        
+        .result h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .result p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .flag-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 60px;
+            height: 40px;
+            background-size: cover;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flag-indicator"></div>
+        <h1>Verificador de Votação e Alistamento</h1>
+        
+        <div class="input-group">
+            <label for="country">Selecione o país:</label>
+            <select id="country">
+                <option value="">-- Selecione --</option>
+                <option value="BR">Brasil</option>
+                <option value="US">Estados Unidos (EUA)</option>
+                <option value="JP">Japão</option>
+                <option value="RU">Rússia</option>
+                <option value="CN">China</option>
+                <option value="GB">Reino Unido</option>
+                <option value="ES">Espanha</option>
+                <option value="PT">Portugal</option>
+                <option value="BO">Bolívia</option>
+                <option value="FR">França</option>
+                <option value="CH">Suíça</option>
+                <option value="AR">Argentina</option>
+            </select>
+        </div>
+        
+        <div class="input-group">
+            <label for="age">Digite sua idade:</label>
+            <input type="number" id="age" min="0" max="120" placeholder="Ex: 18">
+        </div>
+        
+        <div class="input-group">
+            <label for="gender">Selecione seu sexo:</label>
+            <select id="gender">
+                <option value="">-- Selecione --</option>
+                <option value="M">Masculino</option>
+                <option value="F">Feminino</option>
+                <option value="O">Outro</option>
+            </select>
+        </div>
+        
+        <button id="checkBtn">Verificar</button>
+        
+        <div class="result" id="result">
+            <h2>Resultado:</h2>
+            <p id="voteResult"></p>
+            <p id="militaryResult"></p>
+        </div>
+    </div>
+
+    <script>
+        const countries = {
+            "BR": {
+                name: "Brasil",
+                flag: "https://upload.wikimedia.org/wikipedia/en/0/05/Flag_of_Brazil.svg",
+                backgroundFlag: "linear-gradient(rgba(0, 39, 118, 0.7), rgba(0, 39, 118, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/0/05/Flag_of_Brazil.svg')",
+                voting: {
+                    optional: [16, 17, 70],  // Opcional para menores de 18 e maiores de 70
+                    mandatory: [18, 69],     // Obrigatório entre 18 e 69
+                    notAllowed: [0, 15]      // Não permitido abaixo de 16
+                },
+                military: {
+                    male: {
+                        mandatory: [18, 45], // Alistamento obrigatório para homens entre 18 e 45
+                        optional: [17, 17],  // Opcional aos 17
+                        notRequired: [0, 16, 46, 120] // Não obrigatório abaixo de 17 e acima de 45
+                    },
+                    female: {
+                        optional: [18, 45],  // Opcional para mulheres entre 18 e 45
+                        notRequired: [0, 17, 46, 120] // Não obrigatório para o resto
+                    },
+                    other: {
+                        optional: [18, 45],  
+                        notRequired: [0, 17, 46, 120]
+                    }
+                }
+            },
+            "US": {
+                name: "Estados Unidos",
+                flag: "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg",
+                backgroundFlag: "linear-gradient(rgba(60, 59, 110, 0.7), rgba(60, 59, 110, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg')",
+                voting: {
+                    optional: [18, 120],    // Opcional para todos acima de 18
+                    mandatory: [],          // Não é obrigatório
+                    notAllowed: [0, 17]     // Não permitido abaixo de 18
+                },
+                military: {
+                    male: {
+                        mandatory: [],      // Não é mais obrigatório
+                        optional: [18, 35], // Alistamento voluntário entre 18 e 35
+                        notRequired: [0, 17, 36, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 35],
+                        notRequired: [0, 17, 36, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 35],
+                        notRequired: [0, 17, 36, 120]
+                    }
+                }
+            },
+            "JP": {
+                name: "Japão",
+                flag: "https://upload.wikimedia.org/wikipedia/en/9/9e/Flag_of_Japan.svg",
+                backgroundFlag: "linear-gradient(rgba(188, 0, 45, 0.5), rgba(188, 0, 45, 0.5)), url('https://upload.wikimedia.org/wikipedia/en/9/9e/Flag_of_Japan.svg')",
+                voting: {
+                    optional: [18, 120],   // Opcional para todos acima de 18
+                    mandatory: [],         // Não é obrigatório
+                    notAllowed: [0, 17]    // Não permitido abaixo de 18
+                },
+                military: {
+                    male: {
+                        mandatory: [],     // O Japão não tem exército obrigatório
+                        optional: [18, 32],
+                        notRequired: [0, 17, 33, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 32],
+                        notRequired: [0, 17, 33, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 32],
+                        notRequired: [0, 17, 33, 120]
+                    }
+                }
+            },
+            "RU": {
+                name: "Rússia",
+                flag: "https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg",
+                backgroundFlag: "linear-gradient(rgba(0, 57, 166, 0.7), rgba(0, 57, 166, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [18, 27],
+                        optional: [28, 40],
+                        notRequired: [0, 17, 41, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 40],
+                        notRequired: [0, 17, 41, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 40],
+                        notRequired: [0, 17, 41, 120]
+                    }
+                }
+            },
+            "CN": {
+                name: "China",
+                flag: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Flag_of_the_People%27s_Republic_of_China.svg",
+                backgroundFlag: "linear-gradient(rgba(222, 41, 16, 0.7), rgba(222, 41, 16, 0.7)), url('https://upload.wikimedia.org/wikipedia/commons/f/fa/Flag_of_the_People%27s_Republic_of_China.svg')",
+                voting: {
+                    optional: [18, 120],   // Sistema político diferente, mas 18 anos para votar
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [],     // Na prática é obrigatório mas raramente aplicado
+                        optional: [18, 22],
+                        notRequired: [0, 17, 23, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 22],
+                        notRequired: [0, 17, 23, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 22],
+                        notRequired: [0, 17, 23, 120]
+                    }
+                }
+            },
+            "GB": {
+                name: "Reino Unido",
+                flag: "https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg",
+                backgroundFlag: "linear-gradient(rgba(1, 33, 105, 0.7), rgba(1, 33, 105, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [],
+                        optional: [16, 36],  // Podem se alistar com 16 (com permissão dos pais)
+                        notRequired: [0, 15, 37, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [16, 36],
+                        notRequired: [0, 15, 37, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [16, 36],
+                        notRequired: [0, 15, 37, 120]
+                    }
+                }
+            },
+            "ES": {
+                name: "Espanha",
+                flag: "https://upload.wikimedia.org/wikipedia/en/9/9a/Flag_of_Spain.svg",
+                backgroundFlag: "linear-gradient(rgba(170, 21, 27, 0.7), rgba(170, 21, 27, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/9/9a/Flag_of_Spain.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [],
+                        optional: [18, 47],
+                        notRequired: [0, 17, 48, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 47],
+                        notRequired: [0, 17, 48, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 47],
+                        notRequired: [0, 17, 48, 120]
+                    }
+                }
+            },
+            "PT": {
+                name: "Portugal",
+                flag: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Portugal.svg",
+                backgroundFlag: "linear-gradient(rgba(0, 102, 0, 0.7), rgba(0, 102, 0, 0.7)), url('https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Portugal.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [],
+                        optional: [18, 35],
+                        notRequired: [0, 17, 36, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 35],
+                        notRequired: [0, 17, 36, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 35],
+                        notRequired: [0, 17, 36, 120]
+                    }
+                }
+            },
+            "BO": {
+                name: "Bolívia",
+                flag: "https://upload.wikimedia.org/wikipedia/commons/b/b3/Bandera_de_Bolivia_%28Estado%29.svg",
+                backgroundFlag: "linear-gradient(rgba(213, 43, 30, 0.7), rgba(213, 43, 30, 0.7)), url('https://upload.wikimedia.org/wikipedia/commons/b/b3/Bandera_de_Bolivia_%28Estado%29.svg')",
+                voting: {
+                    optional: [],
+                    mandatory: [18, 120],   // Voto obrigatório a partir dos 18
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [18, 22],  // Obrigatório para homens
+                        optional: [],
+                        notRequired: [0, 17, 23, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 22],
+                        notRequired: [0, 17, 23, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 22],
+                        notRequired: [0, 17, 23, 120]
+                    }
+                }
+            },
+            "FR": {
+                name: "França",
+                flag: "https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg",
+                backgroundFlag: "linear-gradient(rgba(0, 35, 149, 0.7), rgba(0, 35, 149, 0.7)), url('https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [],  // Serviço militar obrigatório foi abolido
+                        optional: [17, 40],
+                        notRequired: [0, 16, 41, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [17, 40],
+                        notRequired: [0, 16, 41, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [17, 40],
+                        notRequired: [0, 16, 41, 120]
+                    }
+                }
+            },
+            "CH": {
+                name: "Suíça",
+                flag: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Switzerland.svg",
+                backgroundFlag: "linear-gradient(rgba(213, 43, 30, 0.7), rgba(213, 43, 30, 0.7)), url('https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Switzerland.svg')",
+                voting: {
+                    optional: [18, 120],
+                    mandatory: [],
+                    notAllowed: [0, 17]
+                },
+                military: {
+                    male: {
+                        mandatory: [18, 34],  // Obrigatório para homens suíços
+                        optional: [35, 42],   // Reserva até 42
+                        notRequired: [0, 17, 43, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 42],
+                        notRequired: [0, 17, 43, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 42],
+                        notRequired: [0, 17, 43, 120]
+                    }
+                }
+            },
+            "AR": {
+                name: "Argentina",
+                flag: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg",
+                backgroundFlag: "linear-gradient(rgba(108, 172, 228, 0.7), rgba(108, 172, 228, 0.7)), url('https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg')",
+                voting: {
+                    optional: [16, 17, 70, 120],  // Opcional para 16-17 e acima de 70
+                    mandatory: [18, 69],         // Obrigatório entre 18 e 69
+                    notAllowed: [0, 15]
+                },
+                military: {
+                    male: {
+                        mandatory: [],           // Serviço militar voluntário desde 1994
+                        optional: [18, 24],
+                        notRequired: [0, 17, 25, 120]
+                    },
+                    female: {
+                        mandatory: [],
+                        optional: [18, 24],
+                        notRequired: [0, 17, 25, 120]
+                    },
+                    other: {
+                        mandatory: [],
+                        optional: [18, 24],
+                        notRequired: [0, 17, 25, 120]
+                    }
+                }
+            }
+        };
+
+        // Função para verificar se a idade está em um determinado intervalo
+        function isInRange(age, range) {
+            // Se o range estiver vazio, retorna falso
+            if (range.length === 0) return false;
+            
+            // Para intervalos com apenas dois números (min e max)
+            if (range.length === 2) {
+                return age >= range[0] && age <= range[1];
+            }
+            
+            // Para intervalos com vários números (diferentes faixas)
+            for (let i = 0; i < range.length; i += 2) {
+                if (age >= range[i] && age <= range[i + 1]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Função para atualizar o fundo com a bandeira do país
+        function updateBackground(countryCode) {
+            if (countryCode && countries[countryCode]) {
+                document.body.style.background = countries[countryCode].backgroundFlag;
+                document.querySelector('.flag-indicator').style.backgroundImage = `url('${countries[countryCode].flag}')`;
+            } else {
+                document.body.style.background = "linear-gradient(to right, #6a11cb, #2575fc)";
+                document.querySelector('.flag-indicator').style.backgroundImage = "none";
+            }
+        }
+
+        // Evento para mudar o fundo quando o país é selecionado
+        document.getElementById('country').addEventListener('change', function() {
+            updateBackground(this.value);
+        });
+
+        // Função para verificar os requisitos de voto e serviço militar
+        document.getElementById('checkBtn').addEventListener('click', function() {
+            const country = document.getElementById('country').value;
+            const age = parseInt(document.getElementById('age').value);
+            const gender = document.getElementById('gender').value;
+            
+            // Validações
+            if (!country) {
+                alert('Por favor, selecione um país!');
+                return;
+            }
+            
+            if (!age || isNaN(age) || age < 0 || age > 120) {
+                alert('Por favor, digite uma idade válida entre 0 e 120!');
+                return;
+            }
+            
+            if (!gender) {
+                alert('Por favor, selecione seu sexo!');
+                return;
+            }
+            
+            const countryData = countries[country];
+            let voteStatus, militaryStatus;
+            
+            // Verificar status de votação
+            if (isInRange(age, countryData.voting.notAllowed)) {
+                voteStatus = `Em ${countryData.name}, pessoas com ${age} anos <strong>não podem votar</strong>.`;
+            } else if (isInRange(age, countryData.voting.mandatory)) {
+                voteStatus = `Em ${countryData.name}, o voto é <strong>obrigatório</strong> para pessoas com ${age} anos.`;
+            } else if (isInRange(age, countryData.voting.optional)) {
+                voteStatus = `Em ${countryData.name}, o voto é <strong>opcional/facultativo</strong> para pessoas com ${age} anos.`;
+            } else {
+                voteStatus = `Não há informações específicas sobre votação para ${age} anos em ${countryData.name}.`;
+            }
+            
+            // Verificar status de serviço militar
+            const genderData = gender === 'M' ? countryData.military.male : 
+                               gender === 'F' ? countryData.military.female : 
+                               countryData.military.other;
+            
+            if (isInRange(age, genderData.mandatory)) {
+                militaryStatus = `O serviço militar é <strong>obrigatório</strong> para pessoas do sexo ${gender === 'M' ? 'masculino' : gender === 'F' ? 'feminino' : 'outro'} com ${age} anos em ${countryData.name}.`;
+            } else if (isInRange(age, genderData.optional)) {
+                militaryStatus = `O serviço militar é <strong>opcional/voluntário</strong> para pessoas do sexo ${gender === 'M' ? 'masculino' : gender === 'F' ? 'feminino' : 'outro'} com ${age} anos em ${countryData.name}.`;
+            } else if (isInRange(age, genderData.notRequired)) {
+                militaryStatus = `O serviço militar <strong>não é obrigatório</strong> para pessoas do sexo ${gender === 'M' ? 'masculino' : gender === 'F' ? 'feminino' : 'outro'} com ${age} anos em ${countryData.name}.`;
+            } else {
+                militaryStatus = `Não há informações específicas sobre serviço militar para pessoas do sexo ${gender === 'M' ? 'masculino' : gender === 'F' ? 'feminino' : 'outro'} com ${age} anos em ${countryData.name}.`;
+            }
+            
+            // Exibir resultados
+            document.getElementById('voteResult').innerHTML = voteStatus;
+            document.getElementById('militaryResult').innerHTML = militaryStatus;
+            document.getElementById('result').style.display = 'block';
+        });
+
+        // Aplicar gradiente padrão no carregamento da página
+        document.body.style.background = "linear-gradient(to right, #6a11cb, #2575fc)";
+    </script>
+</body>
+</html>
