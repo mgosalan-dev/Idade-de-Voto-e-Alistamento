@@ -63,12 +63,6 @@ O sistema opera com base em um objeto JavaScript que mapeia as regras de votaç�
 }
 ```
 
-## 📸 Screenshots
-
-![Tela de seleção](https://your-screenshot-url.com/select-screen.jpg)
-![Resultado para Brasil](https://your-screenshot-url.com/result-brazil.jpg)
-![Resultado para EUA](https://your-screenshot-url.com/result-usa.jpg)
-
 ## 🧑‍💻 Desenvolvido com ❤️ e ☕ [Manoel Gosalan](https://github.com/mgosalan-dev).
 
 Te desejo sucesso nesse projeto, mano! Qualquer bug ou feature, manda aquele PR de lei que vamos analisar.
